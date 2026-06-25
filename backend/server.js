@@ -6,7 +6,7 @@ const cors = require("cors");
 const {
   generateQuestion,
   generateQuestionFromPrompt,
-} = require("./services/geminiService");
+} = require("./services/aiService");
 
 const app = express();
 
@@ -77,6 +77,74 @@ Ask only the next question.
     });
   }
 });
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const { interviewData, role } = req.body;
+
+    const prompt = `
+You are a senior technical interviewer.
+
+Evaluate the interview.
+
+Role:
+${role}
+
+Interview Transcript:
+${JSON.stringify(interviewData)}
+
+Return ONLY valid JSON.
+
+The JSON must have EXACTLY this structure:
+
+{
+  "communicationScore": 8,
+  "technicalScore": 9,
+  "confidenceScore": 8,
+  "strengths": [
+    "...",
+    "..."
+  ],
+  "improvements": [
+    "...",
+    "..."
+  ],
+  "recommendation": "Hire",
+  "overallFeedback": "..."
+}
+
+Rules:
+
+- communicationScore must be an integer from 1-10
+- technicalScore must be an integer from 1-10
+- confidenceScore must be an integer from 1-10
+- recommendation must be ONLY one of:
+  "Hire"
+  "Maybe Hire"
+  "No Hire"
+
+Return ONLY JSON.
+
+No markdown.
+
+No explanation.
+`;
+
+    const feedback =
+      await generateQuestionFromPrompt(prompt);
+
+    const parsedFeedback = JSON.parse(feedback);
+
+res.json(parsedFeedback);
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to generate feedback",
+    });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
