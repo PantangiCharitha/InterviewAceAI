@@ -32,13 +32,16 @@ const transcriptRef = useRef("");
   useEffect(() => {
     fetchQuestion();
   }, []);
+  
   useEffect(() => {
-  const timer = setInterval(() => {
+  if (interviewCompleted) return;
+
+  const interval = setInterval(() => {
     setSeconds((prev) => prev + 1);
   }, 1000);
 
-  return () => clearInterval(timer);
-}, []);
+  return () => clearInterval(interval);
+}, [interviewCompleted]);
 useEffect(() => {
   if (question) {
     speakText(question);
@@ -139,60 +142,80 @@ const stopListening = () => {
 };
 
 
-  const handleSendAnswer = async () => {
-    if (!answer.trim()) {
-  alert("Please provide an answer before sending.");
-  return;
-}
-  try {
-    const response = await API.post("/api/next-question", {
-  role,
-  interviewType,
-  currentQuestion: question,
-  answer,
-  interviewData,
-});
-    const updatedInterviewData = [
-  ...interviewData,
-  {
-    question,
-    answer,
-  },
-];
+ const handleSendAnswer = async () => {
+  if (!answer.trim()) {
+    alert("Please provide an answer before sending.");
+    return;
+  }
 
-setInterviewData(updatedInterviewData);
+  try {
+    // Save current Q&A
+    const updatedInterviewData = [
+      ...interviewData,
+      {
+        question,
+        answer,
+      },
+    ];
+
+    setInterviewData(updatedInterviewData);
 
     setMessages((prev) => [
-  ...prev,
-  {
-    sender: "user",
-    text: answer,
-  },
-  {
-    sender: "ai",
-    text: response.data.question,
-  },
-]);
+      ...prev,
+      {
+        sender: "user",
+        text: answer,
+      },
+    ]);
 
-setQuestion(response.data.question);
-if (questionCount >= MAX_QUESTIONS) {
-  setInterviewCompleted(true);
+    // 🚀 Interview finished
+    if (questionCount >= MAX_QUESTIONS) {
+      setInterviewCompleted(true);
 
-  const feedbackResponse = await API.post("/api/feedback", {
-    interviewData: updatedInterviewData,
-    role,
-  });
+      setLoading(true);
 
-  setFeedback(feedbackResponse.data);
+      const feedbackResponse = await API.post("/api/feedback", {
+        interviewData: updatedInterviewData,
+        role,
+      });
 
-  return;
-}
+      setFeedback(feedbackResponse.data);
 
-setQuestionCount((prev) => prev + 1);
-setAnswer("");
-transcriptRef.current = "";
+      setLoading(false);
+
+      setAnswer("");
+      transcriptRef.current = "";
+
+      return;
+    }
+
+    // Ask next AI question
+    const response = await API.post("/api/next-question", {
+      role,
+      interviewType,
+      currentQuestion: question,
+      answer,
+      interviewData: updatedInterviewData,
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: "ai",
+        text: response.data.question,
+      },
+    ]);
+
+    setQuestion(response.data.question);
+
+    setQuestionCount((prev) => prev + 1);
+
+    setAnswer("");
+    transcriptRef.current = "";
+
   } catch (error) {
     console.error(error);
+    setLoading(false);
   }
 };
 const handleEndInterview = async () => {
@@ -212,6 +235,26 @@ const handleEndInterview = async () => {
     setLoading(false);
   }
 };
+const average =
+  (
+    feedback?.communicationScore +
+    feedback?.technicalScore +
+    feedback?.confidenceScore
+  ) / 3;
+
+const grade =
+  average >= 9
+    ? "A+"
+    : average >= 8
+    ? "A"
+    : average >= 7
+    ? "B+"
+    : average >= 6
+    ? "B"
+    : average >= 5
+    ? "C"
+    : "D";
+
 const downloadReport = () => {
   if (!feedback) {
     alert("Generate feedback before downloading the report.");
@@ -470,26 +513,42 @@ const downloadReport = () => {
 
 <button
   onClick={startListening}
-className=" w-48 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg transition">
- {isListening ? (
-  <span className="animate-pulse">
-    🔴 Listening...
-  </span>
-) : (
-  "🎤 Start Speaking"
-)}
+  disabled={interviewCompleted}
+  className={`w-48 px-6 py-3 rounded-xl shadow-lg transition ${
+    interviewCompleted
+      ? "bg-gray-400 cursor-not-allowed text-white"
+      : "bg-blue-600 hover:bg-blue-700 text-white"
+  }`}
+>
+  {isListening ? (
+    <span className="animate-pulse">🔴 Listening...</span>
+  ) : (
+    "🎤 Start Speaking"
+  )}
 </button>
 
 <button
   onClick={stopListening}
-className="w-48 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl shadow-lg transition">
+  disabled={interviewCompleted}
+  className={`w-48 px-6 py-3 rounded-xl shadow-lg transition ${
+    interviewCompleted
+      ? "bg-gray-400 cursor-not-allowed text-white"
+      : "bg-gray-600 hover:bg-gray-700 text-white"
+  }`}
+>
   ⏹ Stop
 </button>
 
 <button
   onClick={handleSendAnswer}
-className="w-48 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl shadow-lg transition"  >
-📤 Send
+  disabled={interviewCompleted}
+  className={`w-48 px-6 py-3 rounded-xl shadow-lg transition ${
+    interviewCompleted
+      ? "bg-gray-400 cursor-not-allowed text-white"
+      : "bg-green-600 hover:bg-green-700 text-white"
+  }`}
+>
+  📤 Send
 </button>
 <button
   onClick={handleEndInterview}
@@ -517,33 +576,63 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
     <h2 className="text-3xl font-bold text-center text-blue-700 mb-8">
       📊 Interview Report
     </h2>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
 
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-8 text-center">
 
-      <div className="bg-blue-100 rounded-xl p-6 text-center">
-        <h3 className="font-bold">Communication</h3>
-        <p className="text-4xl mt-2">
-          {feedback.communicationScore}/10
-        </p>
-      </div>
+    <div className="text-5xl mb-3">💬</div>
 
-      <div className="bg-green-100 rounded-xl p-6 text-center">
-        <h3 className="font-bold">Technical</h3>
-        <p className="text-4xl mt-2">
-          {feedback.technicalScore}/10
-        </p>
-        
-      </div>
-      
+    <h3 className="text-xl font-bold">
+      Communication
+    </h3>
 
-      <div className="bg-yellow-100 rounded-xl p-6 text-center">
-        <h3 className="font-bold">Confidence</h3>
-        <p className="text-4xl mt-2">
-          {feedback.confidenceScore}/10
-        </p>
-      </div>
+    <p className="text-5xl font-bold text-blue-700 mt-4">
+      {feedback.communicationScore}/10
+    </p>
 
-    </div>
+  </div>
+
+  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg p-8 text-center">
+
+    <div className="text-5xl mb-3">💻</div>
+
+    <h3 className="text-xl font-bold">
+      Technical
+    </h3>
+
+    <p className="text-5xl font-bold text-green-700 mt-4">
+      {feedback.technicalScore}/10
+    </p>
+
+  </div>
+
+  <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl shadow-lg p-8 text-center">
+
+    <div className="text-5xl mb-3">🚀</div>
+
+    <h3 className="text-xl font-bold">
+      Confidence
+    </h3>
+
+    <p className="text-5xl font-bold text-yellow-700 mt-4">
+      {feedback.confidenceScore}/10
+    </p>
+
+  </div>
+
+</div>
+<div className="bg-white rounded-2xl shadow-lg p-8 mb-8 text-center">
+
+  <h2 className="text-2xl font-bold mb-4">
+    ⭐ Overall Grade
+  </h2>
+
+  <div className="text-7xl font-extrabold text-indigo-600">
+    {grade}
+  </div>
+
+</div>
+
 
     <div className="mb-6">
 
