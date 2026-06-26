@@ -1,4 +1,5 @@
 require("dotenv").config();
+const codingRoutes = require("./routes/codingRoutes");
 
 const express = require("express");
 const cors = require("cors");
@@ -8,12 +9,15 @@ const {
   generateQuestionFromPrompt,
 } = require("./services/aiService");
 const resumeRoutes = require("./routes/resumeRoutes");
+const codeExecutionRoutes = require("./routes/codeExecutionRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use("/api/resume", resumeRoutes);
+app.use("/api/coding", codingRoutes);
+app.use("/api/code", codeExecutionRoutes);
 
 app.get("/", (req, res) => {
   res.send("InterviewAce Backend Running");

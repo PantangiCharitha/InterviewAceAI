@@ -9,6 +9,7 @@ import API from "../services/api";
 import { generateInterviewReport } from "../utils/pdfReport";
 import FeedbackDashboard from "../components/FeedbackDashboard";
 import LoadingOverlay from "../components/LoadingOverlay";
+import { useNavigate } from "react-router-dom";
 
 function Interview() {
   const {
@@ -36,6 +37,7 @@ const progress = (questionCount / MAX_QUESTIONS) * 100;
 
 const recognitionRef = useRef(null);
 const transcriptRef = useRef("");
+const navigate = useNavigate();
   useEffect(() => {
     fetchQuestion();
   }, []);
@@ -177,46 +179,19 @@ const stopListening = () => {
     ]);
 
     // 🚀 Interview finished
-    if (questionCount >= MAX_QUESTIONS) {
-      setInterviewCompleted(true);
+ // 🚀 Interview finished
+if (questionCount >= MAX_QUESTIONS) {
+  setInterviewCompleted(true);
 
-      setLoading(true);
+  setAnswer("");
+  transcriptRef.current = "";
 
-     const feedbackResponse = await API.post("/api/feedback", {
-  interviewData: updatedInterviewData,
-  role,
-});
+  setTimeout(() => {
+    navigate("/coding");
+  }, 2000);
 
-setFeedback(feedbackResponse.data);
-
-// Save interview to Local Storage
-const interviewRecord = {
-  role,
-  interviewType,
-  date: new Date().toLocaleString(),
-  grade,
-  feedback: feedbackResponse.data,
-  interviewData: updatedInterviewData,
-};
-
-const existingHistory =
-  JSON.parse(localStorage.getItem("interviewHistory")) || [];
-
-existingHistory.unshift(interviewRecord);
-
-localStorage.setItem(
-  "interviewHistory",
-  JSON.stringify(existingHistory)
-);
-
-      setLoading(false);
-
-      setAnswer("");
-      transcriptRef.current = "";
-
-      return;
-    }
-
+  return;
+}
     // Ask next AI question
     const response = await API.post("/api/next-question", {
   role,
@@ -502,9 +477,10 @@ const downloadReport = () => {
   📤 Send
 </button>
 <button
-  onClick={handleEndInterview}
-className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shadow-lg transition"  >
-  🛑 End Interview
+  onClick={() => navigate("/coding")}
+  className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shadow-lg transition"
+>
+  💻 Coding Round
 </button>
 
 </div>

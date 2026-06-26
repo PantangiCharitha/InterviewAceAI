@@ -28,6 +28,9 @@ export const InterviewProvider = ({ children }) => {
   const [company, setCompany] = useState("");
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeData, setResumeData] = useState(null);
+  const [codingQuestion, setCodingQuestion] = useState(null);
+const [codingScore, setCodingScore] = useState(null);
+const [codingCompleted, setCodingCompleted] = useState(false);
 
   return (
     <InterviewContext.Provider
@@ -46,6 +49,16 @@ export const InterviewProvider = ({ children }) => {
 
         resumeData,
         setResumeData,
+
+        codingQuestion,
+setCodingQuestion,
+
+codingScore,
+setCodingScore,
+
+codingCompleted,
+setCodingCompleted,
+
       }}
     >
       {children}
