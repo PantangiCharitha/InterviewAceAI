@@ -174,12 +174,32 @@ const stopListening = () => {
 
       setLoading(true);
 
-      const feedbackResponse = await API.post("/api/feedback", {
-        interviewData: updatedInterviewData,
-        role,
-      });
+     const feedbackResponse = await API.post("/api/feedback", {
+  interviewData: updatedInterviewData,
+  role,
+});
 
-      setFeedback(feedbackResponse.data);
+setFeedback(feedbackResponse.data);
+
+// Save interview to Local Storage
+const interviewRecord = {
+  role,
+  interviewType,
+  date: new Date().toLocaleString(),
+  grade,
+  feedback: feedbackResponse.data,
+  interviewData: updatedInterviewData,
+};
+
+const existingHistory =
+  JSON.parse(localStorage.getItem("interviewHistory")) || [];
+
+existingHistory.unshift(interviewRecord);
+
+localStorage.setItem(
+  "interviewHistory",
+  JSON.stringify(existingHistory)
+);
 
       setLoading(false);
 
@@ -228,6 +248,26 @@ const handleEndInterview = async () => {
     });
 
     setFeedback(response.data);
+
+    // Save interview to Local Storage
+    const interviewRecord = {
+      role,
+      interviewType,
+      date: new Date().toLocaleString(),
+      grade,
+      feedback: response.data,
+      interviewData,
+    };
+
+    const existingHistory =
+      JSON.parse(localStorage.getItem("interviewHistory")) || [];
+
+    existingHistory.unshift(interviewRecord);
+
+    localStorage.setItem(
+      "interviewHistory",
+      JSON.stringify(existingHistory)
+    );
 
     setLoading(false);
   } catch (error) {
