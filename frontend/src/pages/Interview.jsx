@@ -6,7 +6,8 @@ import {
 } from "react";
 import { InterviewContext } from "../context/InterviewContext";
 import API from "../services/api";
-import jsPDF from "jspdf";
+import { generateInterviewReport } from "../utils/pdfReport";
+import FeedbackDashboard from "../components/FeedbackDashboard";
 
 function Interview() {
   const { role, interviewType } = useContext(InterviewContext);
@@ -47,7 +48,6 @@ useEffect(() => {
     speakText(question);
   }
 }, [question]);
-
  const fetchQuestion = async () => {
   try {
     setLoading(true);
@@ -261,113 +261,14 @@ const downloadReport = () => {
     return;
   }
 
-  const doc = new jsPDF();
-
-  let y = 20;
-
-  doc.setFontSize(20);
-  doc.text("InterviewAce AI Report", 20, y);
-
-  y += 15;
-
-  doc.setFontSize(12);
-
-  doc.text(`Role: ${role}`, 20, y);
-  y += 10;
-
-  doc.text(`Interview Type: ${interviewType}`, 20, y);
-  y += 10;
-
-  doc.text(
-    `Date: ${new Date().toLocaleString()}`,
-    20,
-    y
-  );
-
-  y += 20;
-
-  doc.setFontSize(16);
-  doc.text("Scores", 20, y);
-
-  y += 10;
-
-  doc.setFontSize(12);
-
-  doc.text(
-    `Communication: ${feedback.communicationScore}/10`,
-    20,
-    y
-  );
-
-  y += 10;
-
-  doc.text(
-    `Technical: ${feedback.technicalScore}/10`,
-    20,
-    y
-  );
-
-  y += 10;
-
-  doc.text(
-    `Confidence: ${feedback.confidenceScore}/10`,
-    20,
-    y
-  );
-
-  y += 20;
-
-  doc.setFontSize(16);
-  doc.text("Strengths", 20, y);
-
-  y += 10;
-
-  feedback.strengths.forEach((item) => {
-    doc.text(`• ${item}`, 25, y);
-    y += 8;
+  generateInterviewReport({
+    role,
+    interviewType,
+    feedback,
+    interviewData,
+    grade,
   });
-
-  y += 10;
-
-  doc.setFontSize(16);
-  doc.text("Areas for Improvement", 20, y);
-
-  y += 10;
-
-  feedback.improvements.forEach((item) => {
-    doc.text(`• ${item}`, 25, y);
-    y += 8;
-  });
-
-  y += 15;
-
-  doc.setFontSize(16);
-  doc.text("Recommendation", 20, y);
-
-  y += 10;
-
-  doc.setFontSize(12);
-  doc.text(feedback.recommendation, 20, y);
-
-  y += 20;
-
-  doc.setFontSize(16);
-  doc.text("Overall Feedback", 20, y);
-
-  y += 10;
-
-  doc.setFontSize(12);
-
-  const lines = doc.splitTextToSize(
-    feedback.overallFeedback,
-    170
-  );
-
-  doc.text(lines, 20, y);
-
-  doc.save("Interview_Report.pdf");
 };
-
 
   return (
 <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 flex flex-col items-center p-8">      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -571,166 +472,12 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
   </div>
 )}
       {feedback && (
-  <div className="mt-8 w-full max-w-5xl bg-white rounded-2xl shadow-xl p-8">
-
-    <h2 className="text-3xl font-bold text-center text-blue-700 mb-8">
-      📊 Interview Report
-    </h2>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-
-  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-8 text-center">
-
-    <div className="text-5xl mb-3">💬</div>
-
-    <h3 className="text-xl font-bold">
-      Communication
-    </h3>
-
-    <p className="text-5xl font-bold text-blue-700 mt-4">
-      {feedback.communicationScore}/10
-    </p>
-
-  </div>
-
-  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg p-8 text-center">
-
-    <div className="text-5xl mb-3">💻</div>
-
-    <h3 className="text-xl font-bold">
-      Technical
-    </h3>
-
-    <p className="text-5xl font-bold text-green-700 mt-4">
-      {feedback.technicalScore}/10
-    </p>
-
-  </div>
-
-  <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl shadow-lg p-8 text-center">
-
-    <div className="text-5xl mb-3">🚀</div>
-
-    <h3 className="text-xl font-bold">
-      Confidence
-    </h3>
-
-    <p className="text-5xl font-bold text-yellow-700 mt-4">
-      {feedback.confidenceScore}/10
-    </p>
-
-  </div>
-
-</div>
-<div className="bg-white rounded-2xl shadow-lg p-8 mb-8 text-center">
-
-  <h2 className="text-2xl font-bold mb-4">
-    ⭐ Overall Grade
-  </h2>
-
-  <div className="text-7xl font-extrabold text-indigo-600">
-    {grade}
-  </div>
-
-</div>
-
-
-    <div className="mb-6">
-
-      <h3 className="text-xl font-bold text-green-700 mb-2">
-        💪 Strengths
-      </h3>
-
-      <ul className="list-disc ml-6">
-
-        {feedback.strengths.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-
-      </ul>
-
-    </div>
-
-    <div className="mb-6">
-
-      <h3 className="text-xl font-bold text-red-700 mb-2">
-        📈 Areas for Improvement
-      </h3>
-
-      <ul className="list-disc ml-6">
-
-        {feedback.improvements.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-
-      </ul>
-
-    </div>
-
-    <div className="bg-indigo-50 rounded-xl p-6">
-
-      <h3 className="text-xl font-bold mb-2">
-        ⭐ Recommendation
-      </h3>
-
-      <p className="text-lg">
-        {feedback.recommendation}
-      </p>
-
-      <h3 className="text-xl font-bold mt-6 mb-2">
-        📝 Overall Feedback
-      </h3>
-
-      <p>
-        {feedback.overallFeedback}
-      </p>
-      <div className="flex justify-center mt-8">
-        <div className="mt-8">
-
-  <h3 className="text-2xl font-bold text-blue-700 mb-4">
-    📜 Interview Transcript
-  </h3>
-
-  {interviewData.map((item, index) => (
-
-    <div
-      key={index}
-      className="bg-gray-50 rounded-xl p-5 shadow mb-4"
-    >
-
-      <h4 className="font-bold text-blue-600">
-        Question {index + 1}
-      </h4>
-
-      <p className="mt-2">
-        {item.question}
-      </p>
-
-      <h4 className="font-bold text-green-600 mt-4">
-        Your Answer
-      </h4>
-
-      <p className="mt-2">
-        {item.answer}
-      </p>
-
-    </div>
-
-  ))}
-
-</div>
-
-  <button
-    onClick={downloadReport}
-    className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl shadow-lg transition"
-  >
-    📄 Download Report
-  </button>
-
-</div>
-
-    </div>
-
-  </div>
+  <FeedbackDashboard
+    feedback={feedback}
+    interviewData={interviewData}
+    grade={grade}
+    downloadReport={downloadReport}
+  />
 )}
 
     </div>
