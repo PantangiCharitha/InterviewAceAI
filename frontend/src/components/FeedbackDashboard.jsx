@@ -1,3 +1,5 @@
+import React from "react";
+import ScoreChart from "./ScoreChart";
 function FeedbackDashboard({
   feedback,
   interviewData,
@@ -144,6 +146,8 @@ function FeedbackDashboard({
         </p>
 
       </div>
+      
+      <ScoreChart feedback={feedback} />
 
       {/* Transcript */}
 

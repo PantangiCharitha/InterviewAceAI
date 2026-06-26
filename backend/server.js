@@ -7,11 +7,13 @@ const {
   generateQuestion,
   generateQuestionFromPrompt,
 } = require("./services/aiService");
+const resumeRoutes = require("./routes/resumeRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/resume", resumeRoutes);
 
 app.get("/", (req, res) => {
   res.send("InterviewAce Backend Running");
@@ -19,12 +21,40 @@ app.get("/", (req, res) => {
 
 app.post("/api/start", async (req, res) => {
   try {
-    const { role, interviewType } = req.body;
+    const {
+  role,
+  interviewType,
+  company,
+  resumeData,
+} = req.body;
 
-    const question = await generateQuestion(
-      role,
-      interviewType
-    );
+    const prompt = `
+You are a senior ${company} interviewer.
+
+Candidate Role:
+${role}
+
+Interview Type:
+${interviewType}
+
+Candidate Resume:
+
+${JSON.stringify(resumeData, null, 2)}
+
+Instructions:
+
+1. Ask ONE interview question.
+2. Use the candidate's resume.
+3. Ask about projects when appropriate.
+4. Ask about skills listed in the resume.
+5. Ask according to ${company}'s interview style.
+6. Do not greet.
+7. Do not explain.
+8. Output ONLY the question.
+`;
+
+const question =
+  await generateQuestionFromPrompt(prompt);
 
     res.json({ question });
   } catch (error) {
@@ -39,9 +69,11 @@ app.post("/api/start", async (req, res) => {
 const PORT = 5000;
 app.post("/api/next-question", async (req, res) => {
   try {
-    const {
+   const {
   role,
   interviewType,
+  company,
+  resumeData,
   currentQuestion,
   answer,
   interviewData,
@@ -92,13 +124,39 @@ if (
   userAnswer.includes("next")
 ) {
   const prompt = `
-You are interviewing a ${role} candidate.
+You are a senior interviewer at ${company}.
 
-Ask ONE completely NEW interview question.
+Candidate Role:
+${role}
 
-Do not mention previous questions.
+Interview Type:
+${interviewType}
 
-Return only the question.
+Candidate Resume:
+${JSON.stringify(resumeData, null, 2)}
+
+Interview Progress:
+Question ${interviewData.length + 1}
+
+Previous Question:
+${currentQuestion}
+
+Candidate Answer:
+${answer}
+
+Instructions:
+
+- Continue the interview naturally.
+- Use the resume to ask about:
+  • Skills
+  • Projects
+  • Experience
+  • Certifications
+- Ask deeper follow-up questions when appropriate.
+- Mix role-based questions with resume-based questions.
+- Follow ${company}'s interview style.
+- Never repeat a previous question.
+- Return ONLY the next interview question.
 `;
 
   const question =

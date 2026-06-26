@@ -8,9 +8,15 @@ import { InterviewContext } from "../context/InterviewContext";
 import API from "../services/api";
 import { generateInterviewReport } from "../utils/pdfReport";
 import FeedbackDashboard from "../components/FeedbackDashboard";
+import LoadingOverlay from "../components/LoadingOverlay";
 
 function Interview() {
-  const { role, interviewType } = useContext(InterviewContext);
+  const {
+  role,
+  interviewType,
+  company,
+  resumeData,
+} = useContext(InterviewContext);
 const [question, setQuestion] = useState("");
 const [answer, setAnswer] = useState("");
 const [messages, setMessages] = useState([]);
@@ -53,9 +59,11 @@ useEffect(() => {
     setLoading(true);
 
     const response = await API.post("/api/start", {
-      role,
-      interviewType,
-    });
+  role,
+  interviewType,
+  company,
+  resumeData,
+});
 
     setQuestion(response.data.question);
 
@@ -211,12 +219,14 @@ localStorage.setItem(
 
     // Ask next AI question
     const response = await API.post("/api/next-question", {
-      role,
-      interviewType,
-      currentQuestion: question,
-      answer,
-      interviewData: updatedInterviewData,
-    });
+  role,
+  interviewType,
+  company,
+  resumeData,
+  currentQuestion: question,
+  answer,
+  interviewData,
+});
 
     setMessages((prev) => [
       ...prev,
@@ -511,7 +521,11 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
     </p>
   </div>
 )}
-      {feedback && (
+
+{/* Loading Overlay */}
+{loading && <LoadingOverlay />}
+
+{feedback && (
   <FeedbackDashboard
     feedback={feedback}
     interviewData={interviewData}
@@ -519,9 +533,9 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
     downloadReport={downloadReport}
   />
 )}
-
-    </div>
+ </div>
   );
+
 }
 
 export default Interview;
