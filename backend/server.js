@@ -40,18 +40,81 @@ const PORT = 5000;
 app.post("/api/next-question", async (req, res) => {
   try {
     const {
-      role,
-      interviewType,
-      currentQuestion,
-      answer,
-    } = req.body;
+  role,
+  interviewType,
+  currentQuestion,
+  answer,
+  interviewData,
+} = req.body;
+// Normalize the user's answer
+const userAnswer = answer.toLowerCase();
+console.log("User Answer:", userAnswer);
 
+// Need more time
+if (
+  userAnswer.includes("minute") ||
+  userAnswer.includes("moment") ||
+  userAnswer.includes("wait") ||
+  userAnswer.includes("think")
+) {
+  return res.json({
+    question:
+      "Sure, take your time. When you're ready, simply continue answering the previous question.",
+  });
+}
+
+// Repeat question
+if (
+  userAnswer.includes("repeat") ||
+  userAnswer.includes("again")
+) {
+  return res.json({
+    question: currentQuestion,
+  });
+}
+
+// Doesn't know
+if (
+  userAnswer.includes("don't know") ||
+  userAnswer.includes("dont know") ||
+  userAnswer.includes("no idea") ||
+  userAnswer.includes("not sure")
+) {
+  return res.json({
+    question:
+      "That's completely fine. Could you explain how you would approach solving it, even if you're unsure of the exact answer?",
+  });
+}
+
+// Skip
+if (
+  userAnswer.includes("skip") ||
+  userAnswer.includes("next")
+) {
+  const prompt = `
+You are interviewing a ${role} candidate.
+
+Ask ONE completely NEW interview question.
+
+Do not mention previous questions.
+
+Return only the question.
+`;
+
+  const question =
+    await generateQuestionFromPrompt(prompt);
+
+  return res.json({ question });
+}
     const prompt = `
-You are an expert interviewer.
+You are a professional interviewer with 10+ years of experience.
 
 Role: ${role}
 
 Interview Type: ${interviewType}
+
+Current Interview Progress:
+Question Number: ${interviewData?.length + 1 || 2}
 
 Previous Question:
 ${currentQuestion}
@@ -59,11 +122,18 @@ ${currentQuestion}
 Candidate Answer:
 ${answer}
 
-Based on the answer, ask ONE relevant follow-up interview question.
+Instructions:
 
-Do not explain.
-Do not evaluate.
-Ask only the next question.
+1. Carefully analyze the candidate's answer.
+2. If the answer is short, ask for more details.
+3. If the answer is good, ask a deeper follow-up.
+4. If the answer mentions a project, ask about technologies, challenges, architecture or impact.
+5. Never repeat previous questions.
+6. Keep the interview conversational.
+7. Ask ONLY ONE question.
+8. Do not provide feedback.
+9. Do not provide explanations.
+10. Output ONLY the next interview question.
 `;
 
     const question = await generateQuestionFromPrompt(prompt);
@@ -78,13 +148,13 @@ Ask only the next question.
   }
 });
 app.post("/api/feedback", async (req, res) => {
+  console.log("🔥 /api/feedback route hit");
+
   try {
     const { interviewData, role } = req.body;
 
-    const prompt = `
-You are a senior technical interviewer.
-
-Evaluate the interview.
+   const prompt = `
+You are a senior interviewer evaluating a completed interview.
 
 Role:
 ${role}
@@ -92,50 +162,78 @@ ${role}
 Interview Transcript:
 ${JSON.stringify(interviewData)}
 
-Return ONLY valid JSON.
+Evaluate the candidate professionally.
 
-The JSON must have EXACTLY this structure:
+Scoring Guidelines:
+
+Communication Score (1–10)
+- Clarity
+- Grammar
+- Confidence
+- Structure
+
+Technical Score (1–10)
+- Technical correctness
+- Knowledge depth
+- Problem-solving
+- Examples
+
+Confidence Score (1–10)
+- Fluency
+- Completeness
+- Professional tone
+
+Do NOT give extremely low scores unless the answers are genuinely poor.
+
+Average candidates should score around 6–8.
+
+Excellent candidates should score 8–10.
+
+Return ONLY valid JSON:
 
 {
   "communicationScore": 8,
-  "technicalScore": 9,
-  "confidenceScore": 8,
-  "strengths": [
+  "technicalScore": 8,
+  "confidenceScore": 7,
+  "strengths":[
     "...",
     "..."
   ],
-  "improvements": [
+  "improvements":[
     "...",
     "..."
   ],
-  "recommendation": "Hire",
-  "overallFeedback": "..."
+  "recommendation":"Hire",
+  "overallFeedback":"..."
 }
-
-Rules:
-
-- communicationScore must be an integer from 1-10
-- technicalScore must be an integer from 1-10
-- confidenceScore must be an integer from 1-10
-- recommendation must be ONLY one of:
-  "Hire"
-  "Maybe Hire"
-  "No Hire"
-
-Return ONLY JSON.
-
-No markdown.
-
-No explanation.
 `;
 
     const feedback =
       await generateQuestionFromPrompt(prompt);
+      console.log("========== RAW AI RESPONSE ==========");
+console.log(feedback);
+console.log("====================================");
+      console.log("Raw AI Response:\n", feedback);
 
-    const parsedFeedback = JSON.parse(feedback);
+ try {
+  const cleanFeedback = feedback
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
 
-res.json(parsedFeedback);
+  console.log("Clean Feedback:\n", cleanFeedback);
 
+  const parsedFeedback = JSON.parse(cleanFeedback);
+
+  res.json(parsedFeedback);
+} catch (err) {
+  console.error("JSON Parse Error:", err);
+  console.log("Raw AI Response:\n", feedback);
+
+  res.status(500).json({
+    error: "Invalid JSON returned by AI",
+  });
+}
   } catch (error) {
     console.error(error);
 
@@ -144,7 +242,6 @@ res.json(parsedFeedback);
     });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

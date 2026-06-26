@@ -6,30 +6,27 @@ import {
 } from "react";
 import { InterviewContext } from "../context/InterviewContext";
 import API from "../services/api";
+import jsPDF from "jspdf";
 
 function Interview() {
   const { role, interviewType } = useContext(InterviewContext);
-
 const [question, setQuestion] = useState("");
 const [answer, setAnswer] = useState("");
-
 const [messages, setMessages] = useState([]);
 
 const [loading, setLoading] = useState(false);
-
-const [questionCount, setQuestionCount] = useState(1);
-
 const [seconds, setSeconds] = useState(0);
-
 const [isListening, setIsListening] = useState(false);
 
 const [feedback, setFeedback] = useState(null);
-
 const [interviewData, setInterviewData] = useState([]);
-const totalQuestions = 10;
 
-const progress =
-  (questionCount / totalQuestions) * 100;
+const [questionCount, setQuestionCount] = useState(1);
+const MAX_QUESTIONS = 10;
+const [interviewCompleted, setInterviewCompleted] = useState(false);
+
+const progress = (questionCount / MAX_QUESTIONS) * 100;
+
 const recognitionRef = useRef(null);
 const transcriptRef = useRef("");
   useEffect(() => {
@@ -149,18 +146,21 @@ const stopListening = () => {
 }
   try {
     const response = await API.post("/api/next-question", {
-      role,
-      interviewType,
-      currentQuestion: question,
-      answer,
-    });
-    setInterviewData((prev) => [
-  ...prev,
+  role,
+  interviewType,
+  currentQuestion: question,
+  answer,
+  interviewData,
+});
+    const updatedInterviewData = [
+  ...interviewData,
   {
     question,
     answer,
   },
-]);
+];
+
+setInterviewData(updatedInterviewData);
 
     setMessages((prev) => [
   ...prev,
@@ -175,6 +175,20 @@ const stopListening = () => {
 ]);
 
 setQuestion(response.data.question);
+if (questionCount >= MAX_QUESTIONS) {
+  setInterviewCompleted(true);
+
+  const feedbackResponse = await API.post("/api/feedback", {
+    interviewData: updatedInterviewData,
+    role,
+  });
+
+  setFeedback(feedbackResponse.data);
+
+  return;
+}
+
+setQuestionCount((prev) => prev + 1);
 setAnswer("");
 transcriptRef.current = "";
   } catch (error) {
@@ -198,6 +212,119 @@ const handleEndInterview = async () => {
     setLoading(false);
   }
 };
+const downloadReport = () => {
+  if (!feedback) {
+    alert("Generate feedback before downloading the report.");
+    return;
+  }
+
+  const doc = new jsPDF();
+
+  let y = 20;
+
+  doc.setFontSize(20);
+  doc.text("InterviewAce AI Report", 20, y);
+
+  y += 15;
+
+  doc.setFontSize(12);
+
+  doc.text(`Role: ${role}`, 20, y);
+  y += 10;
+
+  doc.text(`Interview Type: ${interviewType}`, 20, y);
+  y += 10;
+
+  doc.text(
+    `Date: ${new Date().toLocaleString()}`,
+    20,
+    y
+  );
+
+  y += 20;
+
+  doc.setFontSize(16);
+  doc.text("Scores", 20, y);
+
+  y += 10;
+
+  doc.setFontSize(12);
+
+  doc.text(
+    `Communication: ${feedback.communicationScore}/10`,
+    20,
+    y
+  );
+
+  y += 10;
+
+  doc.text(
+    `Technical: ${feedback.technicalScore}/10`,
+    20,
+    y
+  );
+
+  y += 10;
+
+  doc.text(
+    `Confidence: ${feedback.confidenceScore}/10`,
+    20,
+    y
+  );
+
+  y += 20;
+
+  doc.setFontSize(16);
+  doc.text("Strengths", 20, y);
+
+  y += 10;
+
+  feedback.strengths.forEach((item) => {
+    doc.text(`• ${item}`, 25, y);
+    y += 8;
+  });
+
+  y += 10;
+
+  doc.setFontSize(16);
+  doc.text("Areas for Improvement", 20, y);
+
+  y += 10;
+
+  feedback.improvements.forEach((item) => {
+    doc.text(`• ${item}`, 25, y);
+    y += 8;
+  });
+
+  y += 15;
+
+  doc.setFontSize(16);
+  doc.text("Recommendation", 20, y);
+
+  y += 10;
+
+  doc.setFontSize(12);
+  doc.text(feedback.recommendation, 20, y);
+
+  y += 20;
+
+  doc.setFontSize(16);
+  doc.text("Overall Feedback", 20, y);
+
+  y += 10;
+
+  doc.setFontSize(12);
+
+  const lines = doc.splitTextToSize(
+    feedback.overallFeedback,
+    170
+  );
+
+  doc.text(lines, 20, y);
+
+  doc.save("Interview_Report.pdf");
+};
+
 
   return (
 <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 flex flex-col items-center p-8">      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -250,24 +377,20 @@ const handleEndInterview = async () => {
   <div className="mt-8">
 
     <div className="flex justify-between mb-2">
+  <p>
+    Question {questionCount} / {MAX_QUESTIONS}
+  </p>
 
-      <span>
-        Question {questionCount} / 10
-      </span>
-
-      <span>
-        {Math.round(progress)}%
-      </span>
-
-    </div>
+  <p>
+    {Math.round(progress)}%
+  </p>
+</div>
 
     <div className="w-full bg-gray-200 rounded-full h-3">
 
       <div
         className="bg-blue-600 h-3 rounded-full transition-all duration-500"
-        style={{
-          width: `${progress}%`,
-        }}
+       style={{ width: `${progress}%` }}
       />
 
     </div>
@@ -376,6 +499,18 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
 
 </div>
       </div>
+      {interviewCompleted && (
+  <div className="mt-8 p-6 bg-green-100 border border-green-300 rounded-xl text-center">
+    <h2 className="text-2xl font-bold text-green-700">
+      🎉 Interview Completed!
+    </h2>
+
+    <p className="mt-2 text-gray-700">
+      Your interview has been completed successfully.
+      Review your feedback below.
+    </p>
+  </div>
+)}
       {feedback && (
   <div className="mt-8 w-full max-w-5xl bg-white rounded-2xl shadow-xl p-8">
 
@@ -397,7 +532,9 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
         <p className="text-4xl mt-2">
           {feedback.technicalScore}/10
         </p>
+        
       </div>
+      
 
       <div className="bg-yellow-100 rounded-xl p-6 text-center">
         <h3 className="font-bold">Confidence</h3>
@@ -457,6 +594,50 @@ className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shad
       <p>
         {feedback.overallFeedback}
       </p>
+      <div className="flex justify-center mt-8">
+        <div className="mt-8">
+
+  <h3 className="text-2xl font-bold text-blue-700 mb-4">
+    📜 Interview Transcript
+  </h3>
+
+  {interviewData.map((item, index) => (
+
+    <div
+      key={index}
+      className="bg-gray-50 rounded-xl p-5 shadow mb-4"
+    >
+
+      <h4 className="font-bold text-blue-600">
+        Question {index + 1}
+      </h4>
+
+      <p className="mt-2">
+        {item.question}
+      </p>
+
+      <h4 className="font-bold text-green-600 mt-4">
+        Your Answer
+      </h4>
+
+      <p className="mt-2">
+        {item.answer}
+      </p>
+
+    </div>
+
+  ))}
+
+</div>
+
+  <button
+    onClick={downloadReport}
+    className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl shadow-lg transition"
+  >
+    📄 Download Report
+  </button>
+
+</div>
 
     </div>
 
