@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import { InterviewContext } from "../context/InterviewContext";
+import PageWrapper from "../components/PageWrapper";
 
 function Setup() {
   const navigate = useNavigate();
@@ -75,6 +76,7 @@ function Setup() {
   };
 
   return (
+  <PageWrapper>
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-100 flex justify-center items-center p-6">
 
       <div className="bg-white rounded-3xl shadow-2xl p-10 w-[650px]">
@@ -223,8 +225,9 @@ function Setup() {
 
       </div>
 
-    </div>
-  );
+       </div>
+  </PageWrapper>
+);
 }
 
 export default Setup;

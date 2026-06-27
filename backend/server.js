@@ -4,6 +4,7 @@ const codingRoutes = require("./routes/codingRoutes");
 const express = require("express");
 const cors = require("cors");
 
+
 const {
   generateQuestion,
   generateQuestionFromPrompt,
@@ -12,12 +13,18 @@ const resumeRoutes = require("./routes/resumeRoutes");
 const codeExecutionRoutes = require("./routes/codeExecutionRoutes");
 
 const app = express();
+const codeEvaluationRoutes =
+require("./routes/codeEvaluationRoutes");
+const finalFeedbackRoutes =
+require("./routes/finalFeedbackRoutes");
 
 app.use(cors());
 app.use(express.json());
 app.use("/api/resume", resumeRoutes);
 app.use("/api/coding", codingRoutes);
 app.use("/api/code", codeExecutionRoutes);
+app.use("/api/code", codeEvaluationRoutes);
+app.use("/api/final-feedback", finalFeedbackRoutes);
 
 app.get("/", (req, res) => {
   res.send("InterviewAce Backend Running");

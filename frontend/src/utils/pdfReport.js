@@ -3,9 +3,10 @@ import jsPDF from "jspdf";
 export function generateInterviewReport({
   role,
   interviewType,
-  feedback,
+  interviewFeedback,
   interviewData,
-  grade,
+  codingResults,
+  finalFeedback,
 }) {
   const doc = new jsPDF();
 
@@ -38,7 +39,10 @@ export function generateInterviewReport({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
 
-    const lines = doc.splitTextToSize(text, 170);
+    const lines = doc.splitTextToSize(
+      String(text),
+      170
+    );
 
     checkPageSpace(lines.length * 6);
 
@@ -47,11 +51,13 @@ export function generateInterviewReport({
     y += lines.length * 6 + 5;
   }
 
-  function bulletList(items) {
+  function bulletList(items = []) {
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
 
     items.forEach((item) => {
+
       checkPageSpace(8);
 
       const lines = doc.splitTextToSize(
@@ -62,19 +68,24 @@ export function generateInterviewReport({
       doc.text(lines, left + 5, y);
 
       y += lines.length * 6 + 2;
+
     });
 
     y += 5;
   }
 
   function addHeader(firstPage = true) {
+
     if (firstPage) {
+
       doc.setFillColor(79, 70, 229);
+
       doc.rect(0, 0, pageWidth, 35, "F");
 
       doc.setTextColor(255);
 
       doc.setFont("helvetica", "bold");
+
       doc.setFontSize(24);
 
       doc.text(
@@ -100,8 +111,11 @@ export function generateInterviewReport({
       doc.setTextColor(0);
 
       y = 50;
+
     } else {
+
       doc.setFont("helvetica", "bold");
+
       doc.setFontSize(16);
 
       doc.text(
@@ -119,18 +133,21 @@ export function generateInterviewReport({
   sectionTitle("Candidate Details");
 
   bodyText(`Role : ${role}`);
+
   bodyText(`Interview Type : ${interviewType}`);
+
   bodyText(
     `Generated On : ${new Date().toLocaleString()}`
   );
 
   sectionTitle("Overall Grade");
 
-  doc.setFontSize(36);
   doc.setFont("helvetica", "bold");
 
+  doc.setFontSize(36);
+
   doc.text(
-    grade,
+    finalFeedback.grade,
     pageWidth / 2,
     y,
     {
@@ -143,10 +160,11 @@ export function generateInterviewReport({
   sectionTitle("Interview Scores");
 
   doc.setFont("helvetica", "bold");
+
   doc.setFontSize(12);
 
   doc.text(
-    `Communication : ${feedback.communicationScore}/10`,
+    `Communication : ${interviewFeedback.communicationScore}/10`,
     left,
     y
   );
@@ -154,7 +172,7 @@ export function generateInterviewReport({
   y += 10;
 
   doc.text(
-    `Technical : ${feedback.technicalScore}/10`,
+    `Technical : ${interviewFeedback.technicalScore}/10`,
     left,
     y
   );
@@ -162,7 +180,7 @@ export function generateInterviewReport({
   y += 10;
 
   doc.text(
-    `Confidence : ${feedback.confidenceScore}/10`,
+    `Confidence : ${interviewFeedback.confidenceScore}/10`,
     left,
     y
   );
@@ -172,10 +190,11 @@ export function generateInterviewReport({
   sectionTitle("Hiring Recommendation");
 
   doc.setFont("helvetica", "bold");
+
   doc.setFontSize(14);
 
   doc.text(
-    feedback.recommendation,
+    interviewFeedback.recommendation,
     left,
     y
   );
@@ -184,18 +203,102 @@ export function generateInterviewReport({
 
   sectionTitle("Strengths");
 
-  bulletList(feedback.strengths);
+  bulletList(interviewFeedback.strengths);
 
   sectionTitle("Areas for Improvement");
 
-  bulletList(feedback.improvements);
+  bulletList(interviewFeedback.improvements);
 
   sectionTitle("Overall Feedback");
 
-  bodyText(feedback.overallFeedback);
+  bodyText(interviewFeedback.overallFeedback);
+    // ==========================
+  // CODING ASSESSMENT
+  // ==========================
+
+  sectionTitle("Coding Assessment");
+
+  (codingResults || []).forEach((item, index) => {
+
+    checkPageSpace(50);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+
+    doc.text(
+      `Coding Question ${index + 1}`,
+      left,
+      y
+    );
+
+    y += 8;
+
+    bodyText(item.question?.title || "Coding Question");
+
+    bodyText(
+      `Overall Score : ${item.evaluation?.overallScore ?? "N/A"}/10`
+    );
+
+    bodyText(
+      `Correctness : ${item.evaluation?.correctness ?? "N/A"}/10`
+    );
+
+    bodyText(
+      `Time Complexity : ${item.evaluation?.timeComplexity ?? "N/A"}`
+    );
+
+    bodyText(
+      `Space Complexity : ${item.evaluation?.spaceComplexity ?? "N/A"}`
+    );
+
+    bodyText(
+      `Recommendation : ${item.evaluation?.hireRecommendation ?? "N/A"}`
+    );
+
+    bodyText(
+      item.evaluation?.feedback || "No feedback available."
+    );
+
+  });
+
+  // ==========================
+  // FINAL AI EVALUATION
+  // ==========================
+
+  sectionTitle("Final AI Evaluation");
+
+  bodyText(
+    `Overall Score : ${finalFeedback?.overallScore ?? "N/A"}/10`
+  );
+
+  bodyText(
+    `Grade : ${finalFeedback?.grade ?? "N/A"}`
+  );
+
+  bodyText(
+    `Recommendation : ${finalFeedback?.recommendation ?? "N/A"}`
+  );
+
+  sectionTitle("Final Strengths");
+
+  bulletList(finalFeedback?.strengths || []);
+
+  sectionTitle("Final Improvements");
+
+  bulletList(finalFeedback?.improvements || []);
+
+  sectionTitle("Final Summary");
+
+  bodyText(finalFeedback?.summary || "No summary available.");
+
+  // ==========================
+  // INTERVIEW TRANSCRIPT
+  // ==========================
 
   sectionTitle("Interview Transcript");
-    interviewData.forEach((item, index) => {
+
+  (interviewData || []).forEach((item, index) => {
+
     checkPageSpace(40);
 
     doc.setFont("helvetica", "bold");
@@ -213,11 +316,9 @@ export function generateInterviewReport({
     doc.setFontSize(11);
 
     const questionLines = doc.splitTextToSize(
-      item.question,
+      item.question || "",
       170
     );
-
-    checkPageSpace(questionLines.length * 6);
 
     doc.text(questionLines, left, y);
 
@@ -236,18 +337,19 @@ export function generateInterviewReport({
     doc.setFont("helvetica", "normal");
 
     const answerLines = doc.splitTextToSize(
-      item.answer,
+      item.answer || "",
       170
     );
-
-    checkPageSpace(answerLines.length * 6);
 
     doc.text(answerLines, left, y);
 
     y += answerLines.length * 6 + 12;
+
   });
 
-  // Footer on every page
+  // ==========================
+  // FOOTER
+  // ==========================
 
   const totalPages = doc.getNumberOfPages();
 
@@ -256,6 +358,7 @@ export function generateInterviewReport({
     doc.setPage(i);
 
     doc.setDrawColor(220);
+
     doc.line(
       15,
       pageHeight - 18,
@@ -283,9 +386,11 @@ export function generateInterviewReport({
     );
   }
 
-  const fileName = `Interview_Report_${role.replace(/\s+/g, "_")}_${new Date()
-    .toISOString()
-    .slice(0, 10)}.pdf`;
+  const fileName =
+    `Interview_Report_${role.replace(/\s+/g, "_")}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.pdf`;
 
   doc.save(fileName);
+
 }

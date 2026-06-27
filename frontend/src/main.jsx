@@ -4,10 +4,14 @@ import App from "./App";
 import "./index.css";
 
 import { InterviewProvider } from "./context/InterviewProvider";
+import { AuthProvider } from "./context/AuthContext";
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <InterviewProvider>
-      <App />
-    </InterviewProvider>
+    <AuthProvider>
+      <InterviewProvider>
+        <App />
+      </InterviewProvider>
+    </AuthProvider>
   </React.StrictMode>
 );

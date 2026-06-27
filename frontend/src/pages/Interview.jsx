@@ -10,7 +10,7 @@ import { generateInterviewReport } from "../utils/pdfReport";
 import FeedbackDashboard from "../components/FeedbackDashboard";
 import LoadingOverlay from "../components/LoadingOverlay";
 import { useNavigate } from "react-router-dom";
-
+import PageWrapper from "../components/PageWrapper";
 function Interview() {
   const {
   role,
@@ -21,6 +21,7 @@ function Interview() {
 const [question, setQuestion] = useState("");
 const [answer, setAnswer] = useState("");
 const [messages, setMessages] = useState([]);
+
 
 const [loading, setLoading] = useState(false);
 const [seconds, setSeconds] = useState(0);
@@ -38,6 +39,8 @@ const progress = (questionCount / MAX_QUESTIONS) * 100;
 const recognitionRef = useRef(null);
 const transcriptRef = useRef("");
 const navigate = useNavigate();
+
+
   useEffect(() => {
     fetchQuestion();
   }, []);
@@ -181,14 +184,38 @@ const stopListening = () => {
     // 🚀 Interview finished
  // 🚀 Interview finished
 if (questionCount >= MAX_QUESTIONS) {
+
   setInterviewCompleted(true);
+  setLoading(true);
 
-  setAnswer("");
-  transcriptRef.current = "";
+  try {
 
-  setTimeout(() => {
-    navigate("/coding");
-  }, 2000);
+    const feedbackResponse = await API.post("/api/feedback", {
+      interviewData: updatedInterviewData,
+      role,
+    });
+
+    setFeedback(feedbackResponse.data);
+
+    setAnswer("");
+    transcriptRef.current = "";
+
+    navigate("/coding", {
+      state: {
+        interviewFeedback: feedbackResponse.data,
+        interviewData: updatedInterviewData,
+        role,
+        interviewType,
+        company,
+        resumeData,
+      },
+    });
+
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
 
   return;
 }
@@ -295,7 +322,8 @@ const downloadReport = () => {
   });
 };
 
-  return (
+ return (
+<PageWrapper>
 <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 flex flex-col items-center p-8">      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-lg p-6 mb-8">
 
   <h1 className="text-4xl font-bold text-center text-blue-700">
@@ -476,12 +504,7 @@ const downloadReport = () => {
 >
   📤 Send
 </button>
-<button
-  onClick={() => navigate("/coding")}
-  className="w-48 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl shadow-lg transition"
->
-  💻 Coding Round
-</button>
+
 
 </div>
       </div>
@@ -510,7 +533,8 @@ const downloadReport = () => {
   />
 )}
  </div>
-  );
+</PageWrapper>
+);
 
 }
 
