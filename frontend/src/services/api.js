@@ -1,7 +1,7 @@
-import axios from "axios";
+https://interviewaceai-qi83.onrender.comimport axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: "https://interviewaceai-qi83.onrender.com",
 });
 
 export default API;
